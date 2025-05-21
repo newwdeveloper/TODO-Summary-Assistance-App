@@ -1,0 +1,40 @@
+import supabase from "../config/supabaseConfig.js";
+import openai from "../config/openAIConfig.js";
+import axios from "axios";
+import slackWebhookUrl from "../config/slackConfig.js";
+import AppError from "../middlewares/appError.js";
+
+export const summarizedTodos = async (req, res, next) => {
+  try {
+    const { data: todos, error } = await supabase
+      .from("todos")
+      .select("description")
+      .eq("status", "pending");
+    if (error)
+      return next(new AppError(`Supabase Error:${error.message}`, 500));
+    if (!todos || todos.length === 0) {
+      return res.status(200).json({ message: "No pending todos to summarize" });
+    }
+    const prompt = `Summarize these pending todos precisely:\n${todos
+      .map((todo) => `- ${todo.description}`)
+      .join("\n")}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const summary = completion?.choices?.[0]?.message?.content?.trim(); //safely trying to extract the AI's response using optional chaining
+    if (!summary) {
+      return next(new AppError("Failed to generate Summary from OpenAI", 500));
+    }
+
+    await axios.post(slackWebhookUrl, { text: summary });
+
+    res
+      .status(200)
+      .json({ message: "Summary sent to Slack successfully", summary });
+  } catch (error) {
+    next(new AppError("Failed to summarize or failed to send Slack", 500));
+  }
+};
