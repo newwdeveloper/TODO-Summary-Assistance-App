@@ -24,7 +24,10 @@ const App = () => {
   }, []);
 
   const addTodo = async () => {
-    if (newTodo.trim() === "") return;
+    if (newTodo.trim() === "") {
+      toast.info("Input cant be empty");
+      return;
+    }
     try {
       setLoading(true);
       await api.post("/todos", { description: newTodo });
