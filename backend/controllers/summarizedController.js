@@ -15,7 +15,9 @@ export const summarizedTodos = async (req, res, next) => {
     if (!todos || todos.length === 0) {
       return res.status(200).json({ message: "No pending todos to summarize" });
     }
-    const prompt = `Summarize these pending todos precisely:\n${todos
+    const prompt = `Summarize the following ${
+      todos.length
+    } pending to-do items into summary kind sentence starting with "You have [Number] pending task" avoiding bullet points or repeating list verbatim:\n${todos
       .map((todo) => `- ${todo.description}`)
       .join("\n")}`;
 
@@ -26,6 +28,7 @@ export const summarizedTodos = async (req, res, next) => {
     });
 
     const summary = completion?.choices?.[0]?.message?.content?.trim(); //safely trying to extract the AI's response using optional chaining
+
     if (!summary) {
       return next(new AppError("Failed to generate Summary from OpenAI", 500));
     }
