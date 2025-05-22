@@ -20,7 +20,8 @@ export const summarizedTodos = async (req, res, next) => {
       .join("\n")}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
+      store: true,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -35,6 +36,12 @@ export const summarizedTodos = async (req, res, next) => {
       .status(200)
       .json({ message: "Summary sent to Slack successfully", summary });
   } catch (error) {
+    if (error.code === "insufficient_quota" || error.status === 429) {
+      return next(
+        new AppError("OpenAI quota exceeded,please upgrade your plan", 429)
+      );
+    }
+    console.error("Detailed error:", error);
     next(new AppError("Failed to summarize or failed to send Slack", 500));
   }
 };
